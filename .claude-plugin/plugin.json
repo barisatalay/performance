@@ -1,0 +1,13 @@
+{
+  "name": "performance",
+  "version": "1.0.0",
+  "description": "Self-audit system that tracks skill usage during sessions and reports used/missed skills via a Haiku agent. Zero configuration required.",
+  "author": {
+    "name": "Barış ATALAY",
+    "url": "https://github.com/barisatalay"
+  },
+  "repository": "https://github.com/barisatalay/performance",
+  "license": "MIT",
+  "keywords": ["performance", "skill-audit", "hooks", "quality", "self-review"],
+  "skills": "./skills/"
+}
