@@ -72,7 +72,7 @@ try {
                 '</system-reminder>'
             ].join('\n');
             console.log(JSON.stringify({ result: 'continue', message }));
-            return;
+            process.exit(0);
         }
     }
 
