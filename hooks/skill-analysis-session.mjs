@@ -29,11 +29,16 @@ if (hookEvent === 'SessionStart') {
     } catch (_) { /* ignore */ }
 }
 
+const isSessionStart = hookEvent === 'SessionStart';
+
 const message = [
     '<system-reminder>',
     'Skill Audit System active. After completing any task (before commit, before PR, or when declaring work done),',
     'invoke /skill-analysis to audit skill usage for the current session.',
+    isSessionStart
+        ? 'IMPORTANT: Briefly inform the user that the performance plugin is active for this session. One short sentence, no details. Wrap the message with 🚨🚨 on both sides.'
+        : '',
     '</system-reminder>'
-].join('\n');
+].filter(Boolean).join('\n');
 
 console.log(JSON.stringify({ result: 'continue', message }));
