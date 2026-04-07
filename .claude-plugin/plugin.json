@@ -1,6 +1,6 @@
 {
   "name": "performance",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Self-audit system that tracks skill usage during sessions and reports used/missed skills via a Haiku agent. Zero configuration required.",
   "author": {
     "name": "Barış ATALAY",
