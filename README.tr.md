@@ -46,7 +46,8 @@ Oturum Başlangıcı
        ▼
 ┌──────────────────────────┐
 │  skill-analysis-session   │  SessionStart hook
-│  Bağlam hatırlatıcısı    │  PreCompact hook
+│  Denetim bayrağını sıfırlar│  PreCompact hook
+│  Bağlam hatırlatıcısı    │
 │  enjekte eder            │
 └──────────────────────────┘
        │
@@ -54,6 +55,11 @@ Oturum Başlangıcı
 ┌──────────────────────────┐
 │  skill-tracker-post       │  PostToolUse hook
 │  Olayı JSONL'e ekler     │
+│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │
+│  TaskUpdate(completed)    │
+│  → Denetim henüz çalışma-│
+│    dıysa tetikleyici     │
+│    enjekte eder          │
 └──────────────────────────┘
        │
        ▼ (git commit sırasında)
@@ -63,7 +69,7 @@ Oturum Başlangıcı
 │  commit'i engeller       │
 └──────────────────────────┘
        │
-       ▼ (manuel veya zorla)
+       ▼ (otomatik veya manuel)
 ┌──────────────────────────┐
 │  /skill-analysis skill    │  İki aşamalı analiz
 │  Ana model ön filtreler  │
@@ -75,8 +81,8 @@ Oturum Başlangıcı
 
 | Hook Dosyası | Olay | Amaç |
 |---|---|---|
-| `skill-tracker-post.mjs` | PostToolUse | Her araç kullanım olayını `skill-tracker.jsonl` dosyasına ekler |
-| `skill-analysis-session.mjs` | SessionStart, PreCompact | Oturum kimliğini yazar ve skill farkındalık hatırlatıcısını enjekte eder (bağlam sıkıştırmasından sağ çıkar) |
+| `skill-tracker-post.mjs` | PostToolUse | Her araç kullanım olayını `skill-tracker.jsonl` dosyasına ekler. Task tamamlandığında skill-analysis tetikleyicisi enjekte eder |
+| `skill-analysis-session.mjs` | SessionStart, PreCompact | Oturum kimliğini yazar, denetim bayrağını sıfırlar ve skill farkındalık hatırlatıcısını enjekte eder (bağlam sıkıştırmasından sağ çıkar) |
 | `skill-audit-reminder.mjs` | PreToolUse (Bash) | `git commit` komutunu yakalar; denetim bayrağı yoksa engeller |
 
 `hooks/hooks.json` dosyası üç hook'u da Claude Code sistemiyle kaydeder.
@@ -93,9 +99,10 @@ Oturum Başlangıcı
 
 ### Otomatik
 
-1. Bir Claude Code oturumu başlatın — hatırlatıcı otomatik olarak enjekte edilir.
+1. Bir Claude Code oturumu başlatın — hatırlatıcı otomatik olarak enjekte edilir ve denetim bayrağı sıfırlanır.
 2. Normal şekilde çalışın. Her araç çağrısı arka planda günlüğe kaydedilir.
-3. `git commit` çalıştırdığınızda, commit koruması denetimin çalıştırılıp çalıştırılmadığını kontrol eder. Çalıştırılmamışsa commit engellenir ve önce `/skill-analysis` çalıştırmanız istenir.
+3. Bir task `TaskUpdate` ile tamamlandığında, eklenti asistana kalan task'ları kontrol edip tümü bittiyse `/skill-analysis` çalıştırması için güçlü bir tetikleyici enjekte eder.
+4. `git commit` çalıştırdığınızda, commit koruması denetimin çalıştırılıp çalıştırılmadığını kontrol eder. Çalıştırılmamışsa commit engellenir ve önce `/skill-analysis` çalıştırmanız istenir.
 
 ### Manuel
 

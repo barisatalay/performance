@@ -46,13 +46,18 @@ Session Start
      ▼
 ┌─────────────────────────┐
 │  skill-analysis-session  │  SessionStart hook
-│  Injects context reminder│  PreCompact hook
+│  Resets audit flag       │  PreCompact hook
+│  Injects context reminder│
 └─────────────────────────┘
      │
      ▼ (every tool use)
 ┌─────────────────────────┐
 │  skill-tracker-post      │  PostToolUse hook
 │  Appends event to JSONL  │
+│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│
+│  On TaskUpdate(completed)│
+│  → Injects audit trigger │
+│    if not already run    │
 └─────────────────────────┘
      │
      ▼ (on git commit)
@@ -62,7 +67,7 @@ Session Start
 │  has not been run        │
 └─────────────────────────┘
      │
-     ▼ (manual or forced)
+     ▼ (auto-triggered or manual)
 ┌─────────────────────────┐
 │  /skill-analysis skill   │  Two-stage analysis
 │  Main model pre-filters  │
@@ -74,8 +79,8 @@ Session Start
 
 | Hook file | Event | Purpose |
 |---|---|---|
-| `skill-tracker-post.mjs` | PostToolUse | Appends each tool-use event to `skill-tracker.jsonl` |
-| `skill-analysis-session.mjs` | SessionStart, PreCompact | Writes session ID and injects skill-awareness reminder (survives context compaction) |
+| `skill-tracker-post.mjs` | PostToolUse | Appends each tool-use event to `skill-tracker.jsonl`. Auto-triggers skill-analysis reminder when a task is completed |
+| `skill-analysis-session.mjs` | SessionStart, PreCompact | Writes session ID, resets audit flag, and injects skill-awareness reminder (survives context compaction) |
 | `skill-audit-reminder.mjs` | PreToolUse (Bash) | Intercepts `git commit`; blocks if audit flag is absent |
 
 The `hooks/hooks.json` file registers all three hooks with the Claude Code harness.
@@ -92,9 +97,10 @@ The `hooks/hooks.json` file registers all three hooks with the Claude Code harne
 
 ### Automatic
 
-1. Start a Claude Code session — the reminder is injected automatically.
+1. Start a Claude Code session — the reminder is injected and the audit flag is reset.
 2. Work normally. Every tool call is logged in the background.
-3. When you run `git commit`, the commit guard checks whether the audit has been run. If not, it blocks the commit and tells you to run `/skill-analysis` first.
+3. When a task is marked as completed via `TaskUpdate`, the plugin injects a strong reminder for the assistant to check remaining tasks and run `/skill-analysis` if all tasks are done.
+4. When you run `git commit`, the commit guard checks whether the audit has been run. If not, it blocks the commit and tells you to run `/skill-analysis` first.
 
 ### Manual
 
