@@ -4,6 +4,8 @@ description: Analyzes skill usage after task completion. Reads session tracking 
 user-invokable: true
 ---
 
+> **Language note:** All table output must be written in the user's language. Detect the user's language from their recent messages. If uncertain, default to the user's own language preference.
+
 When this skill is invoked, follow these steps exactly:
 
 ## Step 1: Read Session Data
@@ -34,7 +36,7 @@ Use the following fallback chain to build the full skill catalog:
 Glob `.claude/skills/_moc-*.md`.
 
 - If matches are found → read them. They contain skill-to-category mappings used for Table 3.
-- If no matches are found → Table 3 will output: `"MOC dosyasi bulunamadi — atlandi"`
+- If no matches are found → Table 3 will output: `"No MOC file found — skipped"`
 
 ## Step 4: Pre-filter Catalog (Stage 1 — main model)
 
@@ -59,6 +61,9 @@ Provide this exact prompt, substituting the placeholders with actual data from t
 ```
 You are a skill usage auditor for a Claude Code session.
 
+## Language
+Detect the user's language from the session context below. Write ALL table content in that language.
+
 ## Session Data
 - Skills invoked: {usedSkills from Step 1}
 - Files edited: {editedFiles from Step 1}
@@ -71,27 +76,31 @@ You are a skill usage auditor for a Claude Code session.
 {content from Step 3, or "Not available"}
 
 ## Task
-Produce exactly 3 markdown tables in Turkish:
+Produce exactly 3 markdown tables:
 
-### Tablo 1: Kullanilan Skill'ler
-| Skill | Kullanim Amaci |
+### Table 1: Skills Used
+| Skill | Purpose |
 For each skill in the session data, describe what it was likely used for
 based on the edited files context.
 
-### Tablo 2: Kacirilan Skill'ler
-| Skill | Neden Gerekli? |
+### Table 2: Missed Skills
+| Skill | Why Needed? | Evidence |
 Compare the pre-filtered relevant skills against the invoked skills list.
-For each relevant skill that was NOT invoked, explain why it should have been
-based on the file paths and trigger conditions.
-Only list skills with clear evidence. Do not speculate.
+For each relevant skill that was NOT invoked:
+- There MUST be concrete, undeniable evidence (matching file paths, explicit trigger conditions met) proving the skill should have been used.
+- The "Evidence" column MUST show the specific file path or trigger condition that proves this.
+- If you are not at least 90% confident, DO NOT list it. An empty table is perfectly acceptable.
+- NEVER speculate or guess. Wrong suggestions mislead the user and erode trust.
+If no missed skills meet this confidence threshold, output:
+"No missed skills detected in this session."
 
-### Tablo 3: MOC Akisi
-| MOC | Ilgili Dosyalar |
+### Table 3: MOC Flow
+| MOC | Related Files |
 Map edited files to their MOC categories.
-If MOC data is not available, output: "MOC dosyasi bulunamadi — atlandi"
+If MOC data is not available, output: "No MOC file found — skipped"
 
 Output ONLY the 3 tables. No preamble, no explanation.
-Write table content in Turkish.
+Write all table content in the detected user language.
 ```
 
 ---
