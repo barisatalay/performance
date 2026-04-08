@@ -13,7 +13,7 @@ Her Claude Code oturumunda performance şunları yapar:
 - `git commit` işlemlerini koruma altına alır — denetim henüz çalıştırılmadıysa commit engellenir, önce `/skill-analysis` çalıştırmanız istenir
 - İstek üzerine (veya commit zamanında) iki aşamalı bir analiz çalıştırır: ana model skill kataloğunu ~5–10 en ilgili adaya daraltır, ardından bir Haiku alt ajanı üç tabloluk temiz bir rapor üretir
 
-Çıktı her zaman Türkçedir — kullanılan skill'ler, kaçırılan skill'ler ve oturumun MOC (İçerik Haritası) akışını kapsayan üç tablo içerir.
+Çıktı dili kullanıcının son mesajlarından otomatik olarak algılanır — kullanılan skill'ler, kaçırılan skill'ler ve oturumun MOC (İçerik Haritası) akışını kapsayan üç tablo içerir.
 
 ---
 
@@ -83,7 +83,7 @@ Oturum Başlangıcı
 |---|---|---|
 | `skill-tracker-post.mjs` | PostToolUse | Her araç kullanım olayını `skill-tracker.jsonl` dosyasına ekler. Task tamamlandığında skill-analysis tetikleyicisi enjekte eder |
 | `skill-analysis-session.mjs` | SessionStart, PreCompact | Oturum kimliğini yazar, denetim bayrağını sıfırlar ve skill farkındalık hatırlatıcısını enjekte eder (bağlam sıkıştırmasından sağ çıkar) |
-| `skill-audit-reminder.mjs` | PreToolUse (Bash) | `git commit` komutunu yakalar; denetim bayrağı yoksa engeller |
+| `skill-audit-reminder.mjs` | PreToolUse (Bash, Skill) | `git commit` ve skill çağrılarını yakalar; denetim bayrağı yoksa engeller |
 
 `hooks/hooks.json` dosyası üç hook'u da Claude Code sistemiyle kaydeder.
 
@@ -116,10 +116,10 @@ Bu komut iki aşamalı analizi başlatır ve üç tabloluk raporu doğrudan konu
 
 ### Çıktı
 
-Rapor her zaman Türkçe olarak üretilir ve üç tablo içerir:
+Rapor kullanıcının algılanan dilinde üretilir ve üç tablo içerir:
 
 - **Tablo 1** — Kullanılan Skill'ler: gerçekten kullanılan skill'ler ve kullanım amaçları
-- **Tablo 2** — Kaçırılan Skill'ler: kullanılabilecek ama kullanılmayan skill'ler ve nedenleri
+- **Tablo 2** — Kaçırılan Skill'ler: kullanılması gereken skill'ler ve kanıtları. Yalnızca somut, inkâr edilemez kanıt olduğunda (%90+ güven) listelenir. Spekülatif bir tablodan boş tablo tercih edilir.
 - **Tablo 3** — MOC Akışı: oturumun İçerik Haritası akışı; konuları ilgili dosyalarla ilişkilendirir
 
 ---
@@ -139,10 +139,9 @@ Rapor her zaman Türkçe olarak üretilir ve üç tablo içerir:
 
 ### Tablo 2: Kaçırılan Skill'ler
 
-| Skill | Neden Gerekli? |
-|---|---|
-| /test-driven-development | Yeni hook fonksiyonları için birim testler yazılmadan önce kullanılmalıydı |
-| /writing-plans | Çok adımlı görev öncesinde plan oluşturmak için faydalı olurdu |
+| Skill | Neden Gerekli? | Kanıt |
+|---|---|---|
+| /test-driven-development | Yeni hook fonksiyonları için birim testler yazılmadan önce kullanılmalıydı | hooks/skill-tracker-post.mjs yeni oluşturuldu, TDD trigger koşulu karşılandı |
 
 ### Tablo 3: MOC Akışı
 
@@ -160,7 +159,8 @@ Rapor her zaman Türkçe olarak üretilir ve üç tablo içerir:
 ```
 performance/
 ├── .claude-plugin/
-│   └── plugin.json                # Eklenti manifestosu (ad, sürüm, hook'lar, skill'ler)
+│   ├── plugin.json                # Eklenti manifestosu (ad, sürüm, hook'lar, skill'ler)
+│   └── marketplace.json           # Marketplace listeleme meta verisi
 ├── hooks/
 │   ├── hooks.json                 # Claude Code sistemi için hook kaydı
 │   ├── skill-tracker-post.mjs     # PostToolUse: araç olaylarını JSONL'e kaydeder
@@ -169,6 +169,7 @@ performance/
 ├── skills/
 │   └── skill-analysis/
 │       └── SKILL.md               # /skill-analysis skill tanımı
+├── version.txt                    # Güncel sürüm
 ├── README.md                      # İngilizce belgeleme
 └── README.tr.md                   # Bu dosya (Türkçe)
 ```
@@ -227,13 +228,6 @@ echo '{"sessionId":"manual","auditRanInSession":true,"blockShownInSession":false
 - Eklenti mevcut oturum başladıktan sonra kuruldu. Claude Code'u yeniden başlatın.
 - Hook'lar kayıtlı değil. `hooks/hooks.json` dosyasını kontrol edin ve eklentinin `claude plugin list` çıktısında göründüğünü doğrulayın.
 
-### Haiku alt ajanı hata üretiyor
+### ASCII dışı karakterler bozuk görünüyor
 
-İki aşamalı analiz, Claude API kullanarak bir alt ajan başlatır. Şunları doğrulayın:
-
-- `ANTHROPIC_API_KEY` ortam değişkeninizin ayarlandığını.
-- Anthropic hesabınızda `claude-haiku` model katmanına erişiminizin olduğunu.
-
-### Türkçe karakterler bozuk görünüyor
-
-Terminalinizin ve düzenleyicinizin UTF-8 olarak ayarlandığından emin olun. Çıktı boyunca ş, ç, ğ, ı, ö, ü karakterleri kullanılmaktadır.
+Terminalinizin ve düzenleyicinizin UTF-8 olarak ayarlandığından emin olun. Çıktı, algılanan kullanıcı diline bağlı olarak ASCII dışı karakterler içerebilir.

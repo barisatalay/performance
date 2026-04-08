@@ -13,7 +13,7 @@ During every Claude Code session, performance:
 - Guards `git commit` operations — if you haven't run the audit yet, the commit is blocked until you do
 - On demand (or at commit time), runs a two-stage analysis: the main model pre-filters the skill catalog to the ~5–10 most relevant candidates, then a Haiku subagent produces a clean three-table report
 
-The output is always in Turkish — three tables covering used skills, missed skills, and the MOC (Map of Content) flow for the session.
+The output language is automatically detected from the user's recent messages — three tables covering used skills, missed skills, and the MOC (Map of Content) flow for the session.
 
 ---
 
@@ -81,7 +81,7 @@ Session Start
 |---|---|---|
 | `skill-tracker-post.mjs` | PostToolUse | Appends each tool-use event to `skill-tracker.jsonl`. Auto-triggers skill-analysis reminder when a task is completed |
 | `skill-analysis-session.mjs` | SessionStart, PreCompact | Writes session ID, resets audit flag, and injects skill-awareness reminder (survives context compaction) |
-| `skill-audit-reminder.mjs` | PreToolUse (Bash) | Intercepts `git commit`; blocks if audit flag is absent |
+| `skill-audit-reminder.mjs` | PreToolUse (Bash, Skill) | Intercepts `git commit` and skill invocations; blocks if audit flag is absent |
 
 The `hooks/hooks.json` file registers all three hooks with the Claude Code harness.
 
@@ -114,11 +114,11 @@ This triggers the two-stage analysis and prints the three-table report directly 
 
 ### Output
 
-The report is always produced in Turkish and contains three tables:
+The report is produced in the user's detected language and contains three tables:
 
-- **Tablo 1** — Kullanılan Skill'ler: skills that were actually used, with their purpose
-- **Tablo 2** — Kaçırılan Skill'ler: skills that could have been used but weren't, with justification
-- **Tablo 3** — MOC Akışı: the Map of Content flow for the session, linking topics to relevant files
+- **Table 1** — Skills Used: skills that were actually used, with their purpose
+- **Table 2** — Missed Skills: skills that should have been used, with evidence. Only listed when there is concrete, undeniable proof (90%+ confidence). An empty table is preferred over a speculative one.
+- **Table 3** — MOC Flow: the Map of Content flow for the session, linking topics to relevant files
 
 ---
 
@@ -137,10 +137,9 @@ The report is always produced in Turkish and contains three tables:
 
 ### Tablo 2: Kaçırılan Skill'ler
 
-| Skill | Neden Gerekli? |
-|---|---|
-| /test-driven-development | Yeni hook fonksiyonları için birim testler yazılmadan önce kullanılmalıydı |
-| /writing-plans | Çok adımlı görev öncesinde plan oluşturmak için faydalı olurdu |
+| Skill | Neden Gerekli? | Kanıt |
+|---|---|---|
+| /test-driven-development | Yeni hook fonksiyonları için birim testler yazılmadan önce kullanılmalıydı | hooks/skill-tracker-post.mjs yeni oluşturuldu, TDD trigger koşulu karşılandı |
 
 ### Tablo 3: MOC Akışı
 
@@ -158,7 +157,8 @@ The report is always produced in Turkish and contains three tables:
 ```
 performance/
 ├── .claude-plugin/
-│   └── plugin.json               # Plugin manifest (name, version, hooks, skills)
+│   ├── plugin.json               # Plugin manifest (name, version, hooks, skills)
+│   └── marketplace.json          # Marketplace listing metadata
 ├── hooks/
 │   ├── hooks.json                # Hook registration for the Claude Code harness
 │   ├── skill-tracker-post.mjs    # PostToolUse: logs tool events to JSONL
@@ -167,6 +167,7 @@ performance/
 ├── skills/
 │   └── skill-analysis/
 │       └── SKILL.md              # /skill-analysis skill definition
+├── version.txt                   # Current version
 ├── README.md                     # This file (English)
 └── README.tr.md                  # Turkish documentation
 ```
@@ -225,13 +226,6 @@ The `skill-tracker-post.mjs` hook was not triggered. Possible causes:
 - The plugin was installed after the current session started. Restart Claude Code.
 - The hooks are not registered. Check `hooks/hooks.json` and verify the plugin is listed in `claude plugin list`.
 
-### Haiku subagent produces an error
+### Non-ASCII characters appear garbled
 
-The two-stage analysis spawns a subagent using the Claude API. Ensure:
-
-- Your `ANTHROPIC_API_KEY` environment variable is set.
-- You have access to the `claude-haiku` model tier in your Anthropic account.
-
-### Turkish characters appear garbled
-
-Ensure your terminal and editor are set to UTF-8. The output uses ş, ç, ğ, ı, ö, ü characters throughout.
+Ensure your terminal and editor are set to UTF-8. The output may contain non-ASCII characters depending on the detected user language.
