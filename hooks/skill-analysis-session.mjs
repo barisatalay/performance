@@ -8,7 +8,7 @@
  * On SessionStart, resets the audit flag so skill-analysis can run once per session.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
 let hookEvent = '';
@@ -20,12 +20,17 @@ try {
     // Ignore stdin errors
 }
 
-// Reset audit flag on SessionStart so it can trigger once per session
+// Reset audit flag and write session_start marker on SessionStart
 if (hookEvent === 'SessionStart') {
     try {
         const stateDir = join(process.cwd(), '.claude', 'hooks', 'state');
         if (!existsSync(stateDir)) mkdirSync(stateDir, { recursive: true });
         writeFileSync(join(stateDir, 'skill-audit-flag.json'), JSON.stringify({ auditRanInSession: false }));
+
+        // Write session_start marker to JSONL — this is the ONLY place it gets written
+        // so subagent session_id changes won't create spurious markers
+        const jsonlPath = join(stateDir, 'skill-tracker.jsonl');
+        appendFileSync(jsonlPath, JSON.stringify({ type: 'session_start', sessionId: 'main', ts: new Date().toISOString() }) + '\n');
     } catch (_) { /* ignore */ }
 }
 
