@@ -15,7 +15,7 @@ let hookEvent = '';
 try {
     const raw = readFileSync('/dev/stdin', 'utf8');
     const input = JSON.parse(raw);
-    hookEvent = input.hook_event || input.event || '';
+    hookEvent = input.hook_event_name || input.hook_event || input.event || '';
 } catch (_) {
     // Ignore stdin errors
 }
@@ -41,4 +41,9 @@ const message = [
     '</system-reminder>'
 ].filter(Boolean).join('\n');
 
-console.log(JSON.stringify({ result: 'continue', message }));
+console.log(JSON.stringify({
+    hookSpecificOutput: {
+        hookEventName: hookEvent || 'SessionStart',
+        additionalContext: message,
+    },
+}));
