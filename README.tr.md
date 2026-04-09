@@ -175,7 +175,8 @@ performance/
 │   ├── test-normal-flow.mjs       # Normal oturum akışı testleri
 │   ├── test-commit-guard.mjs      # Commit koruması testleri
 │   ├── test-subagent.mjs          # Subagent izolasyon testleri
-│   └── test-edge-cases.mjs        # Uç durum testleri
+│   ├── test-edge-cases.mjs        # Uç durum testleri
+│   └── test-kill-switch.mjs       # Kill switch (etkinleştir/devre dışı bırak) testleri
 ├── version.txt                    # Güncel sürüm
 ├── README.md                      # İngilizce belgeleme
 └── README.tr.md                   # Bu dosya (Türkçe)
@@ -196,6 +197,22 @@ Ana model, oturum sırasında düzenlenen dosyaların listesini okur ve katalogd
 Haiku alt ajanı yalnızca aday listesini ve ham JSONL günlüğünü alır. Gerçek araç kullanımını adaylarla karşılaştırır ve son üç tabloluk raporu üretir. Girdi küçük ve odaklı olduğundan Haiku'nun çıktısı kesin ve hızlıdır.
 
 Bu tasarım; gecikmeyi düşük, maliyeti minimal ve çıktı kalitesini yüksek tutar — küresel skill kataloğu ne kadar büyürse büyüsün.
+
+---
+
+## Yapılandırma
+
+Eklenti **sıfır yapılandırma** ile kutudan çıktığı gibi çalışır. Ancak proje bazında devre dışı bırakmak için projenin `.claude/settings.json` dosyasına şunu ekleyebilirsiniz:
+
+```json
+{
+  "env": {
+    "PERFORMANCE_ENABLED": "false"
+  }
+}
+```
+
+Devre dışı bırakıldığında tüm hook'lar pasif hale gelir: izleme yok, commit koruması yok, bağlam enjeksiyonu yok. Kabul edilen devre dışı değerleri: `"false"` veya `"0"`. Tekrar etkinleştirmek için değeri `"true"` yapın veya anahtarı tamamen kaldırın (varsayılan: etkin).
 
 ---
 
@@ -248,6 +265,7 @@ Test suite'leri:
 | `test-commit-guard.mjs` | 5 | Engelleme/izin davranışı, cooldown, commit olmayan komutların geçişi |
 | `test-subagent.mjs` | 4 | Parent+subagent görünürlüğü, iç içe agent'ler, stres testi |
 | `test-edge-cases.mjs` | 7 | Eksik SessionStart, PreCompact izolasyonu, boş oturumlar, otomatik dizin oluşturma, eksik girdiler, zaman damgaları |
+| `test-kill-switch.mjs` | 7 | PERFORMANCE_ENABLED=false tüm hook'ları devre dışı bırakır, varsayılan etkin, oturum ortasında geçiş |
 
 ---
 

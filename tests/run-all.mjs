@@ -14,6 +14,7 @@ const suites = [
     'tests/test-commit-guard.mjs',
     'tests/test-subagent.mjs',
     'tests/test-edge-cases.mjs',
+    'tests/test-kill-switch.mjs',
 ];
 
 let allPassed = true;

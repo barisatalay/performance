@@ -175,7 +175,8 @@ performance/
 │   ├── test-normal-flow.mjs      # Normal session flow tests
 │   ├── test-commit-guard.mjs     # Commit guard tests
 │   ├── test-subagent.mjs         # Subagent isolation tests
-│   └── test-edge-cases.mjs       # Edge case tests
+│   ├── test-edge-cases.mjs       # Edge case tests
+│   └── test-kill-switch.mjs      # Kill switch (enable/disable) tests
 ├── version.txt                   # Current version
 ├── README.md                     # This file (English)
 └── README.tr.md                  # Turkish documentation
@@ -196,6 +197,22 @@ The main model reads the list of files edited during the session and reasons abo
 The Haiku subagent receives only the candidate list alongside the raw JSONL log. It compares actual tool usage against the candidates and produces the final three-table report. Because the input is small and focused, Haiku's output is precise and fast.
 
 This design keeps latency low, cost minimal, and output quality high — regardless of how large the global skill catalog grows.
+
+---
+
+## Configuration
+
+The plugin works out of the box with **zero configuration**. However, you can disable it per-project by adding the following to the project's `.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "PERFORMANCE_ENABLED": "false"
+  }
+}
+```
+
+When disabled, all hooks become no-ops: no tracking, no commit guard, no context injection. Accepted disable values: `"false"` or `"0"`. To re-enable, set the value to `"true"` or remove the key entirely (default is enabled).
 
 ---
 
@@ -248,6 +265,7 @@ Test suites:
 | `test-commit-guard.mjs` | 5 | Block/allow behavior, cooldown, non-commit passthrough |
 | `test-subagent.mjs` | 4 | Parent+subagent visibility, nested agents, stress test |
 | `test-edge-cases.mjs` | 7 | Missing SessionStart, PreCompact isolation, empty sessions, auto-created state dir, missing inputs, timestamps |
+| `test-kill-switch.mjs` | 7 | PERFORMANCE_ENABLED=false disables all hooks, default enabled, mid-session toggle |
 
 ---
 

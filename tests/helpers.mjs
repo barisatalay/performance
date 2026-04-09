@@ -23,10 +23,11 @@ export function cleanState() {
     });
 }
 
-export function run(script, input) {
+export function run(script, input, env = {}) {
     return execSync(`echo '${JSON.stringify(input)}' | node ${script}`, {
         cwd: ROOT,
         encoding: 'utf8',
+        env: { ...process.env, ...env },
     });
 }
 

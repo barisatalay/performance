@@ -11,6 +11,12 @@
 import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
+// Kill switch: set PERFORMANCE_ENABLED=false in .claude/settings.json env to disable
+if (process.env.PERFORMANCE_ENABLED === 'false' || process.env.PERFORMANCE_ENABLED === '0') {
+    console.log(JSON.stringify({}));
+    process.exit(0);
+}
+
 let hookEvent = '';
 try {
     const raw = readFileSync('/dev/stdin', 'utf8');
