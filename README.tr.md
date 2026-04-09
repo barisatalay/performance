@@ -81,8 +81,8 @@ Oturum Başlangıcı
 
 | Hook Dosyası | Olay | Amaç |
 |---|---|---|
-| `skill-tracker-post.mjs` | PostToolUse | Her araç kullanım olayını `skill-tracker.jsonl` dosyasına ekler. Task tamamlandığında skill-analysis tetikleyicisi enjekte eder |
-| `skill-analysis-session.mjs` | SessionStart, PreCompact | Oturum kimliğini yazar, denetim bayrağını sıfırlar ve skill farkındalık hatırlatıcısını enjekte eder (bağlam sıkıştırmasından sağ çıkar) |
+| `skill-tracker-post.mjs` | PostToolUse | Her araç kullanım olayını `skill-tracker.jsonl` dosyasına ekler. Parent ve subagent çağrılarını eşit şekilde izler. Task tamamlandığında skill-analysis tetikleyicisi enjekte eder |
+| `skill-analysis-session.mjs` | SessionStart, PreCompact | JSONL'e oturum sınır işaretçisi yazar (yalnızca SessionStart'ta), denetim bayrağını sıfırlar ve skill farkındalık hatırlatıcısını enjekte eder (bağlam sıkıştırmasından sağ çıkar) |
 | `skill-audit-reminder.mjs` | PreToolUse (Bash, Skill) | `git commit` ve skill çağrılarını yakalar; denetim bayrağı yoksa engeller |
 
 `hooks/hooks.json` dosyası üç hook'u da Claude Code sistemiyle kaydeder.
@@ -169,6 +169,13 @@ performance/
 ├── skills/
 │   └── skill-analysis/
 │       └── SKILL.md               # /skill-analysis skill tanımı
+├── tests/
+│   ├── helpers.mjs                # Paylaşılan test yardımcıları
+│   ├── run-all.mjs                # Tüm suite'leri çalıştırır (node tests/run-all.mjs)
+│   ├── test-normal-flow.mjs       # Normal oturum akışı testleri
+│   ├── test-commit-guard.mjs      # Commit koruması testleri
+│   ├── test-subagent.mjs          # Subagent izolasyon testleri
+│   └── test-edge-cases.mjs        # Uç durum testleri
 ├── version.txt                    # Güncel sürüm
 ├── README.md                      # İngilizce belgeleme
 └── README.tr.md                   # Bu dosya (Türkçe)
@@ -192,17 +199,55 @@ Bu tasarım; gecikmeyi düşük, maliyeti minimal ve çıktı kalitesini yüksek
 
 ---
 
+## Subagent Desteği
+
+Eklenti, subagent'lerden (Agent aracı, Task aracı) gelen araç kullanımlarını tam olarak izler. Claude bir subagent başlattığında, her subagent farklı bir `session_id` ile çalışır. Eklenti bunu doğru şekilde yönetir:
+
+- `session_start` işaretçisi **yalnızca bir kez**, gerçek SessionStart'ta yazılır — session_id değişikliklerinde değil
+- `PostToolUse` hook'u hem parent hem subagent araç çağrıları için tetiklenir, tümü aynı JSONL'e kaydedilir
+- `/skill-analysis` tam resmi görür: parent + tüm subagent skill'leri, düzenlemeleri ve araç sayıları
+
+Yapılandırma gerekmez — subagent izleme otomatik çalışır.
+
+---
+
 ## Çalışma Zamanı Durum Dosyaları
 
 Eklenti, oturum durumunu eklenti kökünde değil, **projenin** `.claude/hooks/state/` dizininde saklar. Bu, durumun proje bazında izole kalmasını ve eklenti kurulumunun kirlenmemesini sağlar.
 
 | Dosya | Amaç |
 |---|---|
-| `skill-tracker.jsonl` | Mevcut oturum için tüm araç kullanım olaylarının ekleme-yalnızca günlüğü |
-| `skill-tracker-session.txt` | SessionStart sırasında yazılan mevcut oturum kimliği |
+| `skill-tracker.jsonl` | Mevcut oturum için tüm araç kullanım olaylarının ekleme-yalnızca günlüğü (parent + subagent'ler) |
 | `skill-audit-flag.json` | Denetim tamamlandığında yazılır; commit koruması tarafından okunur |
 
 Bu dosyalar ilk kullanımda otomatik olarak oluşturulur. Bir oturumun durumunu sıfırlamak için güvenle silebilirsiniz.
+
+---
+
+## Testleri Çalıştırma
+
+Eklenti; normal akışları, subagent senaryolarını, commit korumasını ve uç durumları kapsayan kapsamlı bir test paketi içerir (4 suite, 62 assertion).
+
+**Tüm testleri çalıştır:**
+```bash
+node tests/run-all.mjs
+```
+
+**Tek bir suite çalıştır:**
+```bash
+node tests/test-normal-flow.mjs
+node tests/test-commit-guard.mjs
+node tests/test-subagent.mjs
+node tests/test-edge-cases.mjs
+```
+
+Test suite'leri:
+| Suite | Test | Kapsam |
+|---|---|---|
+| `test-normal-flow.mjs` | 8 | Oturum yaşam döngüsü, skill/edit/tool izleme, denetim tetikleyicileri |
+| `test-commit-guard.mjs` | 5 | Engelleme/izin davranışı, cooldown, commit olmayan komutların geçişi |
+| `test-subagent.mjs` | 4 | Parent+subagent görünürlüğü, iç içe agent'ler, stres testi |
+| `test-edge-cases.mjs` | 7 | Eksik SessionStart, PreCompact izolasyonu, boş oturumlar, otomatik dizin oluşturma, eksik girdiler, zaman damgaları |
 
 ---
 

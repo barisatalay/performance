@@ -1,5 +1,7 @@
 # performance
 
+> **[Turkce dokumantasyon icin tiklayiniz / Turkish documentation](README.tr.md)**
+
 A self-auditing Claude Code plugin that silently tracks which skills (slash commands) you use during a session, then reports what you used and what you missed — via a fast Haiku agent. Zero configuration required: install and it works.
 
 ---
@@ -79,8 +81,8 @@ Session Start
 
 | Hook file | Event | Purpose |
 |---|---|---|
-| `skill-tracker-post.mjs` | PostToolUse | Appends each tool-use event to `skill-tracker.jsonl`. Auto-triggers skill-analysis reminder when a task is completed |
-| `skill-analysis-session.mjs` | SessionStart, PreCompact | Writes session ID, resets audit flag, and injects skill-awareness reminder (survives context compaction) |
+| `skill-tracker-post.mjs` | PostToolUse | Appends each tool-use event to `skill-tracker.jsonl`. Tracks parent and subagent tool calls equally. Auto-triggers skill-analysis reminder when a task is completed |
+| `skill-analysis-session.mjs` | SessionStart, PreCompact | Writes session boundary marker to JSONL (only on SessionStart), resets audit flag, and injects skill-awareness reminder (survives context compaction) |
 | `skill-audit-reminder.mjs` | PreToolUse (Bash, Skill) | Intercepts `git commit` and skill invocations; blocks if audit flag is absent |
 
 The `hooks/hooks.json` file registers all three hooks with the Claude Code harness.
@@ -167,6 +169,13 @@ performance/
 ├── skills/
 │   └── skill-analysis/
 │       └── SKILL.md              # /skill-analysis skill definition
+├── tests/
+│   ├── helpers.mjs               # Shared test utilities
+│   ├── run-all.mjs               # Runs all suites (node tests/run-all.mjs)
+│   ├── test-normal-flow.mjs      # Normal session flow tests
+│   ├── test-commit-guard.mjs     # Commit guard tests
+│   ├── test-subagent.mjs         # Subagent isolation tests
+│   └── test-edge-cases.mjs       # Edge case tests
 ├── version.txt                   # Current version
 ├── README.md                     # This file (English)
 └── README.tr.md                  # Turkish documentation
@@ -190,17 +199,55 @@ This design keeps latency low, cost minimal, and output quality high — regardl
 
 ---
 
+## Subagent Support
+
+The plugin fully tracks tool usage from subagents (Agent tool, Task tool). When Claude spawns a subagent, each subagent runs with a different `session_id`. The plugin handles this correctly:
+
+- The `session_start` marker is written **only once** at actual SessionStart — not on session_id changes
+- `PostToolUse` hook fires for both parent and subagent tool calls, all logged to the same JSONL
+- `/skill-analysis` sees the complete picture: parent + all subagent skills, edits, and tool counts
+
+No configuration needed — subagent tracking works automatically.
+
+---
+
 ## Runtime State Files
 
 The plugin stores session state in the **project's** `.claude/hooks/state/` directory, not in the plugin root. This keeps state isolated per project and avoids polluting the plugin installation.
 
 | File | Purpose |
 |---|---|
-| `skill-tracker.jsonl` | Append-only log of all tool-use events for the current session |
-| `skill-tracker-session.txt` | Current session ID, written at SessionStart |
+| `skill-tracker.jsonl` | Append-only log of all tool-use events for the current session (parent + subagents) |
 | `skill-audit-flag.json` | Written when the audit completes; read by the commit guard |
 
 These files are created automatically on first use. You can safely delete them to reset the state for a session.
+
+---
+
+## Running Tests
+
+The plugin includes a comprehensive test suite covering normal flows, subagent scenarios, commit guard, and edge cases (62 assertions across 4 suites).
+
+**Run all tests:**
+```bash
+node tests/run-all.mjs
+```
+
+**Run a single suite:**
+```bash
+node tests/test-normal-flow.mjs
+node tests/test-commit-guard.mjs
+node tests/test-subagent.mjs
+node tests/test-edge-cases.mjs
+```
+
+Test suites:
+| Suite | Tests | What it covers |
+|---|---|---|
+| `test-normal-flow.mjs` | 8 | Session lifecycle, skill/edit/tool tracking, audit triggers |
+| `test-commit-guard.mjs` | 5 | Block/allow behavior, cooldown, non-commit passthrough |
+| `test-subagent.mjs` | 4 | Parent+subagent visibility, nested agents, stress test |
+| `test-edge-cases.mjs` | 7 | Missing SessionStart, PreCompact isolation, empty sessions, auto-created state dir, missing inputs, timestamps |
 
 ---
 
